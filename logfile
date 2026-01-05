@@ -1,0 +1,8 @@
+2026-01-05 17:01:20.868 MSK [64557] LOG:  starting PostgreSQL 14.20 (Homebrew) on aarch64-apple-darwin25.1.0, compiled by Apple clang version 17.0.0 (clang-1700.4.4.1), 64-bit
+2026-01-05 17:01:20.870 MSK [64557] LOG:  could not bind IPv6 address "::1": Address already in use
+2026-01-05 17:01:20.870 MSK [64557] HINT:  Is another postmaster already running on port 5432? If not, wait a few seconds and retry.
+2026-01-05 17:01:20.870 MSK [64557] LOG:  could not bind IPv4 address "127.0.0.1": Address already in use
+2026-01-05 17:01:20.870 MSK [64557] HINT:  Is another postmaster already running on port 5432? If not, wait a few seconds and retry.
+2026-01-05 17:01:20.870 MSK [64557] WARNING:  could not create listen socket for "localhost"
+2026-01-05 17:01:20.870 MSK [64557] FATAL:  could not create any TCP/IP sockets
+2026-01-05 17:01:20.870 MSK [64557] LOG:  database system is shut down
