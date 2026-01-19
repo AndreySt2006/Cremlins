@@ -7,7 +7,6 @@
   - Kremlin metadata (name, coords, city/region)
   - photos (source + user uploads)
   - comments
-  - history layers (optional)
   - user state later (visited/favorites/routes)
 
 ### 1.2 Required API (stable response shapes)
@@ -18,7 +17,7 @@ From `frontend/roadmap_streamlit.md`:
 
   - Returns a list of Kremlins for map and search.
   - Shape:
-    - `id`, `name`, `lat`, `lon`, `city`, `has_history_layers`
+    - `id`, `name`, `lat`, `lon`, `city`
 
 - **GET** `/api/kremlins/{id}`
   - Returns the full Kremlin detail page.
@@ -27,7 +26,6 @@ From `frontend/roadmap_streamlit.md`:
     - `coordinates: { lat, lon }`
     - `photos: [{ id, url, author }]`
     - `comments: [{ id, text, author }]`
-    - `history_layers: [{ period, description, map_overlay_url }]` (optional)
 
 ### 1.3 Data/model requirements (backend side)
 
@@ -38,7 +36,6 @@ From `frontend/roadmap_streamlit.md`:
   - `lat`, `lon`
   - optional: `city`, `region`
   - optional: `description`
-  - optional: `has_history_layers`
 
 - **Photos**
 
@@ -49,9 +46,6 @@ From `frontend/roadmap_streamlit.md`:
 
   - `text`, `author`, timestamps
   - read-only for anonymous users; write requires auth later
-
-- **History layers (optional)**
-  - period metadata + source + license
 
 ### 1.4 Auth (later, when backend is ready)
 
@@ -146,7 +140,6 @@ In `frontend/proto.py`:
 #### Deferred / TODO (explicitly not now)
 
 - Accounts/visited/favorites in Streamlit (wait for backend).
-- Historical layers UI (wait until we have data + decide format).
 
 ---
 
@@ -181,7 +174,6 @@ Tech stack (target):
   - load detail by id
   - photos gallery
   - comments
-  - optional history section (hidden if empty)
 
 - **RoutePage** (or sidebar panel)
   - checklist of selected Kremlins
@@ -210,8 +202,3 @@ Tech stack (target):
   - add comment
   - upload photo
   - favorites/visited
-
-- **Milestone C (History layers)**
-  - timeline/buttons
-  - overlay rendering (Leaflet.js layer/overlay on OpenStreetMap)
-  - source/license display

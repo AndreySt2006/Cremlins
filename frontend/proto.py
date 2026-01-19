@@ -45,7 +45,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/5/56/Astrakhan_Kremlin_walls.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
     {
         "id": 2,
@@ -59,7 +58,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/9/98/Kazan_Kremlin_Aqueduct.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
     {
         "id": 3,
@@ -73,7 +71,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/a/a3/Kremlin_Churches1.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
     {
         "id": 4,
@@ -87,7 +84,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/5/5d/Moscow_Kremlin_at_night.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
     {
         "id": 5,
@@ -101,7 +97,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/2/2d/Нижегородский_кремль.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
     {
         "id": 6,
@@ -115,7 +110,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/3/36/%D0%9D%D0%BE%D0%B2%D0%B3%D0%BE%D1%80%D0%BE%D0%B4_%D0%9A%D1%80%D0%B5%D0%BC%D0%BB%D1%8C.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
     {
         "id": 7,
@@ -129,7 +123,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/6/6a/%D0%9F%D1%81%D0%BA%D0%BE%D0%B2_%D0%9A%D1%80%D0%B5%D0%BC%D0%BB%D1%8C.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
     {
         "id": 8,
@@ -143,7 +136,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/d/d1/%D0%A0%D0%BE%D1%81%D1%82%D0%BE%D0%B2_%D0%9A%D1%80%D0%B5%D0%BC%D0%BB%D1%8C.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
     {
         "id": 9,
@@ -157,7 +149,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/3/30/Smolensk_kremlin.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
     {
         "id": 10,
@@ -171,7 +162,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/4/4e/Tobolsk_kremlin.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
     {
         "id": 11,
@@ -185,7 +175,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/b/b9/%D0%A2%D1%83%D0%BB%D0%B0_%D0%BA%D1%80%D0%B5%D0%BC%D0%BB%D1%8C.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
     {
         "id": 12,
@@ -199,7 +188,6 @@ DEFAULT_KREMLINS: List[Dict[str, Any]] = [
             "https://upload.wikimedia.org/wikipedia/commons/d/d2/%D0%97%D0%B0%D1%80%D0%B0%D0%B9%D1%81%D0%BA_%D0%BA%D1%80%D0%B5%D0%BC%D0%BB%D1%8C.jpg",
         ],
         "comments": [],
-        "history_layers": [],
     },
 ]
 
@@ -246,7 +234,6 @@ def _normalize_kremlin(raw: Dict[str, Any], fallback_id: int) -> Dict[str, Any]:
     description = raw.get("description") or ""
     images = raw.get("images") or []
     comments = raw.get("comments") or []
-    history_layers = raw.get("history_layers") or []
 
     return {
         "id": int(kremlin_id),
@@ -257,7 +244,6 @@ def _normalize_kremlin(raw: Dict[str, Any], fallback_id: int) -> Dict[str, Any]:
         "description": str(description),
         "images": [_safe_image_url(u) for u in images],
         "comments": list(comments),
-        "history_layers": list(history_layers),
     }
 
 
@@ -297,7 +283,6 @@ def load_kremlins() -> List[Dict[str, Any]]:
                         "description": "",
                         "images": [],
                         "comments": [],
-                        "history_layers": [],
                     },
                     fallback_id=kremlin_id,
                 )
@@ -442,24 +427,6 @@ if kremlin_id_param:
                 st.write(f"- {c}")
     else:
         st.caption("No comments yet. (Writing comments will require an account later.)")
-
-    st.markdown("---")
-    # History layers (optional — hidden if missing)
-    history_layers = kremlin.get("history_layers") or []
-    if history_layers:
-        st.subheader("History & layers")
-        for hl in history_layers:
-            if not isinstance(hl, dict):
-                continue
-            period = hl.get("period") or "Unknown period"
-            desc = hl.get("description") or ""
-            source = hl.get("source_url") or hl.get("source") or ""
-            st.markdown(f"**{period}**")
-            if desc:
-                st.write(desc)
-            if source:
-                st.caption(f"Source: {source}")
-            st.divider()
 
     st.markdown("---")
     st.subheader("Actions")
