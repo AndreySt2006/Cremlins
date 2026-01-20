@@ -30,3 +30,6 @@ starlette==0.50.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 uvicorn==0.40.0
+streamlit==1.39.0
+streamlit-folium==0.21.1
+folium==0.16.0
