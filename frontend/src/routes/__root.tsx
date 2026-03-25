@@ -1,5 +1,6 @@
-import { createRootRoute, useNavigate } from '@tanstack/react-router'
+import { createRootRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
+import { Toaster } from 'sonner'
 import { Layout } from '@/components/Layout'
 import { useAuthStore } from '@/store/authStore'
 import { getMe } from '@/api/auth'
@@ -14,7 +15,12 @@ function RootComponent() {
       .catch(() => logout())
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <Layout />
+  return (
+    <>
+      <Layout />
+      <Toaster position="bottom-right" richColors />
+    </>
+  )
 }
 
 export const Route = createRootRoute({
