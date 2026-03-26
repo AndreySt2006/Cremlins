@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RoutesRouteImport } from './routes/routes'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as KremlinsIdRouteImport } from './routes/kremlins.$id'
+import { Route as KremlinsKremlinIdRouteImport } from './routes/kremlins.$kremlinId'
 
 const RoutesRoute = RoutesRouteImport.update({
   id: '/routes',
@@ -29,9 +29,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const KremlinsIdRoute = KremlinsIdRouteImport.update({
-  id: '/kremlins/$id',
-  path: '/kremlins/$id',
+const KremlinsKremlinIdRoute = KremlinsKremlinIdRouteImport.update({
+  id: '/kremlins/$kremlinId',
+  path: '/kremlins/$kremlinId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -39,34 +39,34 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/profile': typeof ProfileRoute
   '/routes': typeof RoutesRoute
-  '/kremlins/$id': typeof KremlinsIdRoute
+  '/kremlins/$kremlinId': typeof KremlinsKremlinIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/profile': typeof ProfileRoute
   '/routes': typeof RoutesRoute
-  '/kremlins/$id': typeof KremlinsIdRoute
+  '/kremlins/$kremlinId': typeof KremlinsKremlinIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/profile': typeof ProfileRoute
   '/routes': typeof RoutesRoute
-  '/kremlins/$id': typeof KremlinsIdRoute
+  '/kremlins/$kremlinId': typeof KremlinsKremlinIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/profile' | '/routes' | '/kremlins/$id'
+  fullPaths: '/' | '/profile' | '/routes' | '/kremlins/$kremlinId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/profile' | '/routes' | '/kremlins/$id'
-  id: '__root__' | '/' | '/profile' | '/routes' | '/kremlins/$id'
+  to: '/' | '/profile' | '/routes' | '/kremlins/$kremlinId'
+  id: '__root__' | '/' | '/profile' | '/routes' | '/kremlins/$kremlinId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProfileRoute: typeof ProfileRoute
   RoutesRoute: typeof RoutesRoute
-  KremlinsIdRoute: typeof KremlinsIdRoute
+  KremlinsKremlinIdRoute: typeof KremlinsKremlinIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -92,11 +92,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/kremlins/$id': {
-      id: '/kremlins/$id'
-      path: '/kremlins/$id'
-      fullPath: '/kremlins/$id'
-      preLoaderRoute: typeof KremlinsIdRouteImport
+    '/kremlins/$kremlinId': {
+      id: '/kremlins/$kremlinId'
+      path: '/kremlins/$kremlinId'
+      fullPath: '/kremlins/$kremlinId'
+      preLoaderRoute: typeof KremlinsKremlinIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -106,7 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProfileRoute: ProfileRoute,
   RoutesRoute: RoutesRoute,
-  KremlinsIdRoute: KremlinsIdRoute,
+  KremlinsKremlinIdRoute: KremlinsKremlinIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

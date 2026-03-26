@@ -75,7 +75,7 @@ function MapPage() {
   resultsRef.current = results
 
   useEffect(() => {
-    setActiveIndex(-1)
+    setActiveIndex(results.length > 0 ? 0 : -1)
   }, [query])
 
   useEffect(() => {
@@ -140,8 +140,8 @@ function MapPage() {
       const btn = document.getElementById(`btn-kremlin-${kremlin.id}`)
       btn?.addEventListener('click', () => {
         navigateRef.current({
-          to: '/kremlins/$id',
-          params: { id: String(kremlin.id) },
+          to: '/kremlins/$kremlinId',
+          params: { kremlinId: String(kremlin.id) },
         })
       })
     })

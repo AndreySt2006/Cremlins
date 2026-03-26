@@ -354,7 +354,7 @@ async def create_comment(
     comment_id = _next_comment_id
     _next_comment_id += 1
 
-    return Comment(
+    new_comment = Comment(
         id=comment_id,
         kremlinId=kremlin_id,
         authorId=42,
@@ -364,3 +364,5 @@ async def create_comment(
         imageUrls=[],  # в реальной реализации — URL загруженных файлов
         createdAt=datetime.now(timezone.utc).isoformat(),
     )
+    COMMENTS_DATA.setdefault(kremlin_id, []).append(new_comment)
+    return new_comment

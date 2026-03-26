@@ -13,6 +13,7 @@ export const createComment = (
   payload.images?.forEach((file) => form.append('images', file))
 
   return api
+    .extend({ headers: { 'content-type': undefined } })
     .post(`kremlins/${kremlinId}/comments`, { body: form })
     .json()
 }
