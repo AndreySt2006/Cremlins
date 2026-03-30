@@ -3,11 +3,11 @@ import { Menu, MapPin } from 'lucide-react'
 import { useState } from 'react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
+import { useAuthStore } from '@/store/authStore'
 
-const navLinks = [
+const baseNavLinks = [
   { to: '/' as const, label: 'Карта' },
   { to: '/routes' as const, label: 'Маршруты' },
-  { to: '/profile' as const, label: 'Профиль' },
 ]
 
 function NavLink({
@@ -36,6 +36,14 @@ function NavLink({
 
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
+  const navLinks = [
+    ...baseNavLinks,
+    isAuthenticated
+      ? { to: '/profile' as const, label: 'Профиль' }
+      : { to: '/auth' as const, label: 'Войти' },
+  ]
 
   return (
     <div className="min-h-screen flex flex-col">
