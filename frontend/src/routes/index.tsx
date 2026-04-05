@@ -3,8 +3,9 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { toast } from 'sonner'
-import { Loader2, Search, House } from 'lucide-react'
+import { Loader2, House } from 'lucide-react'
 import { useKremlins } from '@/hooks/useKremlins'
+import { useMapSearchStore } from '@/store/mapSearchStore'
 import type { KremlinListItem } from '@/types/kremlin'
 
 export const Route = createFileRoute('/')({
@@ -53,30 +54,7 @@ function MapPage() {
   const zoomedInRef = useRef(false)
 
   const { data: kremlins, isLoading, isError } = useKremlins()
-
-  // Search state
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(-1)
-  const searchInputRef = useRef<HTMLInputElement>(null)
-  const searchContainerRef = useRef<HTMLDivElement>(null)
-
-  // Keep results/activeIndex accessible in event handlers without re-binding
-  const resultsRef = useRef<KremlinListItem[]>([])
-  const activeIndexRef = useRef(-1)
-  activeIndexRef.current = activeIndex
-
-  const results =
-    query.trim().length > 0 && kremlins
-      ? kremlins
-          .filter((k) => k.name.toLowerCase().includes(query.toLowerCase()))
-          .slice(0, 5)
-      : []
-  resultsRef.current = results
-
-  useEffect(() => {
-    setActiveIndex(results.length > 0 ? 0 : -1)
-  }, [query])
+  const { pendingKremlin, setPendingKremlin } = useMapSearchStore()
 
   useEffect(() => {
     if (isError) toast.error('Не удалось загрузить кремли')
@@ -147,16 +125,12 @@ function MapPage() {
     })
   }, [])
 
-  const selectResult = useCallback(
-    (kremlin: KremlinListItem) => {
-      openPopupForKremlin(kremlin)
-      setQuery(kremlin.name)
-      setOpen(false)
-      setActiveIndex(-1)
-      searchInputRef.current?.blur()
-    },
-    [openPopupForKremlin],
-  )
+  // React to search selection from the header
+  useEffect(() => {
+    if (!pendingKremlin || !mapLoaded) return
+    openPopupForKremlin(pendingKremlin)
+    setPendingKremlin(null)
+  }, [pendingKremlin, mapLoaded, openPopupForKremlin, setPendingKremlin])
 
   // Add markers after map load and data fetch
   useEffect(() => {
@@ -205,69 +179,14 @@ function MapPage() {
     }
   }, [mapLoaded, kremlins, openPopupForKremlin])
 
-  // Global keyboard shortcuts
+  // Escape — двухшаговый возврат
   useEffect(() => {
-    const handleMouseDown = (e: MouseEvent) => {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false)
-      }
-    }
-
     const handleKeyDown = (e: KeyboardEvent) => {
-      const inInput = document.activeElement === searchInputRef.current
-
-      // `/` — focus search
       if (
-        e.key === '/' &&
-        !inInput &&
-        !(e.target instanceof HTMLInputElement) &&
-        !(e.target instanceof HTMLTextAreaElement)
+        e.key === 'Escape' &&
+        !(document.activeElement instanceof HTMLInputElement) &&
+        !(document.activeElement instanceof HTMLTextAreaElement)
       ) {
-        e.preventDefault()
-        searchInputRef.current?.focus()
-        setOpen(true)
-        return
-      }
-
-      if (inInput) {
-        switch (e.key) {
-          case 'Escape':
-            setOpen(false)
-            setActiveIndex(-1)
-            searchInputRef.current?.blur()
-            break
-          case 'ArrowDown':
-            e.preventDefault()
-            setOpen(true)
-            setActiveIndex((i) =>
-              i < resultsRef.current.length - 1 ? i + 1 : 0,
-            )
-            break
-          case 'ArrowUp':
-            e.preventDefault()
-            setOpen(true)
-            setActiveIndex((i) =>
-              i > 0 ? i - 1 : resultsRef.current.length - 1,
-            )
-            break
-          case 'Enter':
-            if (
-              activeIndexRef.current >= 0 &&
-              resultsRef.current[activeIndexRef.current]
-            ) {
-              e.preventDefault()
-              selectResult(resultsRef.current[activeIndexRef.current])
-            }
-            break
-        }
-        return
-      }
-
-      // Outside input: Escape — двухшаговый возврат
-      if (e.key === 'Escape') {
         if (popupOpenRef.current) {
           currentPopupRef.current?.remove()
         } else if (zoomedInRef.current) {
@@ -276,61 +195,13 @@ function MapPage() {
       }
     }
 
-    document.addEventListener('mousedown', handleMouseDown)
     document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [selectResult, flyHome])
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [flyHome])
 
   return (
     <div className="relative" style={{ height: 'calc(100vh - 3.5rem)' }}>
       <div ref={containerRef} className="absolute inset-0" />
-
-      {/* Search bar */}
-      <div
-        ref={searchContainerRef}
-        className="absolute left-4 top-4 z-10 w-72"
-      >
-        <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-md">
-          <Search className="h-4 w-4 shrink-0 text-gray-400" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            placeholder="Поиск кремля... (/)"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setOpen(true)
-            }}
-            onFocus={() => setOpen(true)}
-            className="w-full bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none"
-          />
-        </div>
-
-        {open && results.length > 0 && (
-          <ul className="mt-1 overflow-hidden rounded-xl bg-white shadow-md">
-            {results.map((kremlin, i) => (
-              <li key={kremlin.id}>
-                <button
-                  className={`w-full px-4 py-2.5 text-left text-sm text-gray-800 ${
-                    i === activeIndex ? 'bg-red-50' : 'hover:bg-gray-50'
-                  }`}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onMouseEnter={() => setActiveIndex(i)}
-                  onClick={() => selectResult(kremlin)}
-                >
-                  <span className="font-medium">{kremlin.name}</span>
-                  {kremlin.city && (
-                    <span className="ml-1 text-gray-400">{kremlin.city}</span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
 
       {/* Home button */}
       <button
