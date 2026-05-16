@@ -1,124 +1,87 @@
-"""
-Роутер: /api/auth
 
-Endpoints: /login, /register, /me
-
-Все endpoint'ы — mock: любые credentials принимаются,
-любой Bearer-токен считается валидным.
-
-При реализации реальной логики:
-  /login    — проверять хэш пароля bcrypt, возвращать подписанный JWT.
-  /register — проверять уникальность email, хэшировать пароль, сохранять в БД.
-  /me       — верифицировать JWT (подпись + exp), возвращать реального пользователя.
-"""
-
-from fastapi import APIRouter, HTTPException, Header
-from pydantic import BaseModel
 from typing import Optional
 
+from fastapi import APIRouter, HTTPException, Header, Depends
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from ..schemas import User, AuthResponse
+from ..core import security
+from ..database import get_db
+from ..models import User as DBUser
+
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-# ---------------------------------------------------------------------------
-# Request bodies
-# ---------------------------------------------------------------------------
 
+# Request bodies
 class LoginRequest(BaseModel):
-    """Тело запроса для POST /api/auth/login."""
     email: str
     password: str
 
 
 class RegisterRequest(BaseModel):
-    """Тело запроса для POST /api/auth/register."""
     username: str
     email: str
     password: str
 
 
-# ---------------------------------------------------------------------------
-# Фейковые данные по умолчанию (mock)
-# ---------------------------------------------------------------------------
-
-_FAKE_TOKEN = "mock-jwt-token-abc123"
-
-_DEFAULT_USER = User(
-    id=42,
-    username="test_user",
-    email="test@example.com",
-    avatarUrl=None,
-    createdAt="2024-01-01T00:00:00Z",
-)
-
-
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
-
-@router.post(
-    "/login",
-    response_model=AuthResponse,
-    summary="Войти в аккаунт",
-    description=(
-        "Принимает JSON: { email, password }.\n\n"
-        "MOCK: любые credentials → возвращает AuthResponse с фейковым токеном.\n\n"
-        "При реализации:\n"
-        "  - найти пользователя по email;\n"
-        "  - проверить пароль через bcrypt.verify;\n"
-        "  - при несовпадении вернуть 401 с сообщением «Неверный email или пароль»;\n"
-        "  - сгенерировать JWT (HS256, exp = 7 дней) и вернуть AuthResponse."
-    ),
-)
-def login(body: LoginRequest) -> AuthResponse:
-    """Mock-логин: возвращает фейкового пользователя и токен."""
-    return AuthResponse(user=_DEFAULT_USER, accessToken=_FAKE_TOKEN)
-
-
-@router.post(
-    "/register",
-    response_model=AuthResponse,
-    status_code=201,
-    summary="Зарегистрировать аккаунт",
-    description=(
-        "Принимает JSON: { username, email, password }.\n\n"
-        "MOCK: любые данные → возвращает AuthResponse с переданными username/email.\n\n"
-        "При реализации:\n"
-        "  - проверить уникальность email (409 если занят);\n"
-        "  - хэшировать пароль (bcrypt);\n"
-        "  - сохранить нового пользователя в БД;\n"
-        "  - сгенерировать JWT и вернуть AuthResponse."
-    ),
-)
-def register(body: RegisterRequest) -> AuthResponse:
-    """Mock-регистрация: возвращает нового пользователя из переданных данных."""
-    new_user = User(
-        id=99,
-        username=body.username,
-        email=body.email,
-        avatarUrl=None,
-        createdAt="2024-01-01T00:00:00Z",
+@router.post("/login", response_model=AuthResponse)
+def login(body: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
+    db_user = db.query(DBUser).filter(DBUser.email == body.email).first()
+    if not db_user or not security.verify_password(body.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Неверный email или пароль")
+    token = security.create_access_token({"user_id": db_user.id, "username": db_user.username})
+    public = User(
+        id=db_user.id,
+        username=db_user.username,
+        email=db_user.email,
+        avatarUrl=db_user.avatar_url,
+        createdAt=(db_user.created_at.isoformat() if db_user.created_at else ""),
     )
-    return AuthResponse(user=new_user, accessToken=_FAKE_TOKEN)
+    return AuthResponse(user=public, accessToken=token)
 
 
-@router.get(
-    "/me",
-    response_model=User,
-    summary="Текущий пользователь",
-    description=(
-        "Возвращает профиль авторизованного пользователя.\n\n"
-        "Требует заголовок: Authorization: Bearer <token>.\n"
-        "Без токена или с некорректным форматом → 401 Unauthorized.\n\n"
-        "MOCK: любой непустой токен → возвращает фейкового пользователя.\n\n"
-        "При реализации:\n"
-        "  - верифицировать JWT (подпись + срок действия);\n"
-        "  - извлечь user_id из payload;\n"
-        "  - вернуть пользователя из БД или 401 если токен невалиден."
-    ),
-)
-def get_me(authorization: Optional[str] = Header(default=None)) -> User:
-    """Возвращает текущего пользователя по Bearer-токену или 401."""
+@router.post("/register", response_model=AuthResponse, status_code=201)
+def register(body: RegisterRequest, db: Session = Depends(get_db)) -> AuthResponse:
+    # check unique email
+    if db.query(DBUser).filter(DBUser.email == body.email).first():
+        raise HTTPException(status_code=409, detail="Email уже занят")
+    hashed = security.get_password_hash(body.password)
+    user_obj = DBUser(username=body.username, email=body.email, hashed_password=hashed)
+    db.add(user_obj)
+    db.commit()
+    db.refresh(user_obj)
+    token = security.create_access_token({"user_id": user_obj.id, "username": user_obj.username})
+    public = User(
+        id=user_obj.id,
+        username=user_obj.username,
+        email=user_obj.email,
+        avatarUrl=user_obj.avatar_url,
+        createdAt=(user_obj.created_at.isoformat() if user_obj.created_at else ""),
+    )
+    return AuthResponse(user=public, accessToken=token)
+
+
+@router.get("/me", response_model=User)
+def get_me(authorization: Optional[str] = Header(default=None), db: Session = Depends(get_db)) -> User:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Не авторизован")
-    return _DEFAULT_USER
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = security.decode_access_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Не авторизован")
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
+    db_user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
+    return User(
+        id=db_user.id,
+        username=db_user.username,
+        email=db_user.email,
+        avatarUrl=db_user.avatar_url,
+        createdAt=(db_user.created_at.isoformat() if db_user.created_at else ""),
+    )

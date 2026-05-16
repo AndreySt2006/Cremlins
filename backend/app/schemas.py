@@ -1,15 +1,5 @@
-"""
-Pydantic-схемы — контракт API с фронтендом.
 
-для реализации:
-  Схемы финализированы. При переходе от моков к реальной БД
-  меняй только данные внутри роутеров — сигнатуры и поля трогать нельзя,
-  иначе фронтенд сломается.
-
-  Соглашение по именованию: camelCase (совпадает с frontend/src/types/).
-"""
-
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 
@@ -17,13 +7,22 @@ from typing import Optional
 # Kremlin
 # ---------------------------------------------------------------------------
 
-class KremlinLocation(BaseModel):
+class BaseSchema(BaseModel):
+    """Базовый Pydantic-класс для схем — включает настройку для работы с ORM-объектами.
+
+    Используем ConfigDict(from_attributes=True), чтобы можно было валидировать SQLAlchemy
+    объекты через model_validate(obj, from_attributes=True) при необходимости.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+
+class KremlinLocation(BaseSchema):
     """Географические координаты в системе WGS-84."""
     lat: float
     lon: float
 
 
-class KremlinListItem(BaseModel):
+class KremlinListItem(BaseSchema):
     """
     Краткая карточка кремля — используется в списке и на карте.
     Минимум полей, чтобы не перегружать ответ при загрузке всех объектов.
@@ -37,17 +36,6 @@ class KremlinListItem(BaseModel):
 
 
 class KremlinDetail(KremlinListItem):
-    """
-    Полная страница кремля. Наследует KremlinListItem.
-
-    Поля:
-      description   — 2–3 предложения истории объекта.
-      wikipediaUrl  — ссылка на статью Википедии (может отсутствовать).
-      wikidataId    — идентификатор Wikidata (например «Q5110»).
-      images        — упорядоченный список URL фото; первое — главное.
-      commentsCount — кешированный счётчик комментариев;
-                      инкрементировать атомарно при POST /comments.
-    """
     description: Optional[str] = None
     wikipediaUrl: Optional[str] = None
     wikidataId: Optional[str] = None
@@ -59,18 +47,8 @@ class KremlinDetail(KremlinListItem):
 # Comment
 # ---------------------------------------------------------------------------
 
-class Comment(BaseModel):
-    """
-    Комментарий пользователя к кремлю.
+class Comment(BaseSchema):
 
-    createdAt  — ISO-8601 строка (например «2024-06-01T12:00:00Z»).
-    imageUrls  — публичные URL загруженных фото (пустой список если нет).
-
-    При реализации POST /comments:
-      - сохранять файлы в S3 / локальное хранилище;
-      - заполнять imageUrls публичными URL;
-      - инкрементировать commentsCount у кремля атомарно.
-    """
     id: int
     kremlinId: int
     authorId: int
@@ -85,12 +63,7 @@ class Comment(BaseModel):
 # Auth / User
 # ---------------------------------------------------------------------------
 
-class User(BaseModel):
-    """
-    Публичный профиль пользователя.
-    Никогда не включай hashed_password и другие чувствительные поля.
-    createdAt — ISO-8601 строка.
-    """
+class User(BaseSchema):
     id: int
     username: str
     email: str
@@ -98,13 +71,6 @@ class User(BaseModel):
     createdAt: str
 
 
-class AuthResponse(BaseModel):
-    """
-    Ответ на успешные /auth/login и /auth/register.
-
-    accessToken — Bearer-токен (JWT в реальной реализации).
-    Фронтенд сохраняет его в localStorage и отправляет в каждом
-    авторизованном запросе: Authorization: Bearer <token>.
-    """
+class AuthResponse(BaseSchema):
     user: User
     accessToken: str

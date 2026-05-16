@@ -43,11 +43,8 @@ class Comment(Base):
     text = Column(Text, nullable=False)
     image_urls = Column(JSON, nullable=False, server_default='[]')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # relationship to fortress (table name is fortresses / class Fortress)
     fortress = relationship("Fortress", backref="comments")
 
 
 # Совместимость: в других модулях ожидается имя "Kremlin"
-# Чтобы не переименовывать всю кодовую базу — оставим алиас.
 Kremlin = Fortress

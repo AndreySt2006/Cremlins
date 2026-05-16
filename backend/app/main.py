@@ -1,15 +1,7 @@
-"""
-Точка входа FastAPI-приложения «Кремли России».
-
-Запуск:
-    cd backend && uvicorn app.main:app --reload
-
-Swagger UI: http://localhost:8000/docs
-ReDoc:       http://localhost:8000/redoc
-"""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .routers import kremlins, auth
 
@@ -23,10 +15,6 @@ app = FastAPI(
     ),
     version="0.1.0",
 )
-
-# ---------------------------------------------------------------------------
-# CORS
-# ---------------------------------------------------------------------------
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,6 +30,9 @@ app.add_middleware(
 
 app.include_router(kremlins.router)
 app.include_router(auth.router)
+
+# Статические файлы (загруженные изображения)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/", include_in_schema=False)

@@ -1,18 +1,18 @@
-"""
-Роутер: /api/kremlins
-
-Все endpoint'ы возвращают хардкодные данные (mock).
-При реализации реальной логики:
-  - заменить KREMLINS_DATA / COMMENTS_DATA на запросы к БД;
-  - сохранять загружаемые файлы и возвращать их публичные URL;
-  - проверять реальный JWT вместо заглушки `_require_auth`.
-"""
-
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Form, UploadFile, File, Header
+from fastapi import APIRouter, HTTPException, Form, UploadFile, File, Header, Depends
 from typing import Optional
 
+import os
+import shutil
+import uuid
+from sqlalchemy.orm import Session
+from ..database import get_db
+
 from ..schemas import KremlinListItem, KremlinDetail, KremlinLocation, Comment
+from ..core import security
+from ..database import engine
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 router = APIRouter(prefix="/api/kremlins", tags=["kremlins"])
 
@@ -246,18 +246,18 @@ _next_comment_id = 100
 # Вспомогательная функция проверки авторизации (заглушка)
 # ---------------------------------------------------------------------------
 
-def _require_auth(authorization: Optional[str]) -> None:
+def _require_auth(authorization: Optional[str]) -> dict:
     """
-    Проверяет наличие Bearer-токена в заголовке Authorization.
-
-    ЗАГЛУШКА: любой непустой токен считается валидным.
-    При реальной реализации здесь нужно верифицировать JWT:
-      - проверить подпись (SECRET_KEY);
-      - проверить срок действия (exp claim);
-      - извлечь user_id из payload и вернуть его для дальнейшего использования.
+    Проверяет Bearer-токен и возвращает payload токена (например user_id, username).
     """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Не авторизован")
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = security.decode_access_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Не авторизован")
+    return payload
 
 
 # ---------------------------------------------------------------------------
@@ -276,7 +276,37 @@ def _require_auth(authorization: Optional[str]) -> None:
     ),
 )
 def list_kremlins() -> list[KremlinListItem]:
-    """Возвращает все кремли как KremlinListItem (без тяжёлых полей)."""
+    """Возвращает все кремли как KremlinListItem (без тяжёлых полей).
+
+    Пытаемся прочитать из БД (таблица fortresses). Если подключение к БД
+    не удалось — возвращаем mock-данные из KREMLINS_DATA.
+    """
+    try:
+        with engine.connect() as conn:
+            q = text(
+                "SELECT id, name, ST_X(location) AS lon, ST_Y(location) AS lat, image_url, foundation_year, city FROM fortresses")
+            res = conn.execute(q)
+            items: list[KremlinListItem] = []
+            for row in res.mappings():
+                lat = row.get("lat")
+                lon = row.get("lon")
+                if lat is None or lon is None:
+                    continue
+                loc = KremlinLocation(lat=lat, lon=lon)
+                items.append(KremlinListItem(
+                    id=row["id"],
+                    name=row["name"],
+                    location=loc,
+                    previewImageUrl=row.get("image_url"),
+                    city=row.get("city"),
+                    yearBuilt=row.get("foundation_year")
+                ))
+            if items:
+                return items
+    except SQLAlchemyError:
+        # БД недоступна или запрос не удался — используем mock
+        pass
+
     return [KremlinListItem(**k.model_dump()) for k in KREMLINS_DATA]
 
 
@@ -292,7 +322,29 @@ def list_kremlins() -> list[KremlinListItem]:
     ),
 )
 def get_kremlin(kremlin_id: int) -> KremlinDetail:
-    """Возвращает KremlinDetail по id или 404."""
+    """Возвращает KremlinDetail по id или 404.
+
+    Пытаемся сначала прочитать из БД, иначе возвращаем mock.
+    """
+    try:
+        with engine.connect() as conn:
+            q = text(
+                "SELECT id, name, ST_X(location) AS lon, ST_Y(location) AS lat, image_url, description, foundation_year, wikipedia_url, wikidata_id FROM fortresses WHERE id = :id"
+            )
+            res = conn.execute(q, {"id": kremlin_id}).mappings().first()
+            if res:
+                lat = res.get("lat")
+                lon = res.get("lon")
+                loc = KremlinLocation(lat=lat or 0.0, lon=lon or 0.0)
+                return KremlinDetail(
+                    id=res["id"], name=res["name"], location=loc,
+                    previewImageUrl=res.get("image_url"), city=None, yearBuilt=res.get("foundation_year"),
+                    description=res.get("description"), wikipediaUrl=res.get("wikipedia_url"), wikidataId=res.get("wikidata_id"),
+                    images=[res.get("image_url")] if res.get("image_url") else [], commentsCount=0,
+                )
+    except SQLAlchemyError:
+        pass
+
     kremlin = _KREMLINS_BY_ID.get(kremlin_id)
     if not kremlin:
         raise HTTPException(status_code=404, detail="Кремль не найден")
@@ -312,7 +364,34 @@ def get_kremlin(kremlin_id: int) -> KremlinDetail:
     ),
 )
 def list_comments(kremlin_id: int) -> list[Comment]:
-    """Возвращает комментарии к кремлю или 404 если кремль не найден."""
+    """Возвращает комментарии к кремлю или 404 если кремль не найден.
+
+    Пытаемся прочитать комментарии из БД, в противном случае — из памяти.
+    """
+    # Попробуем получить из БД
+    try:
+        from ..models import Comment as DBComment
+        from ..database import SessionLocal
+        db = SessionLocal()
+        rows = db.query(DBComment).filter(DBComment.kremlin_id == kremlin_id).order_by(DBComment.created_at.desc()).all()
+        db.close()
+        if rows:
+            return [
+                Comment(
+                    id=r.id,
+                    kremlinId=r.kremlin_id,
+                    authorId=r.author_id,
+                    authorName=r.author_name,
+                    authorAvatarUrl=r.author_avatar_url,
+                    text=r.text,
+                    imageUrls=r.image_urls or [],
+                    createdAt=(r.created_at.isoformat() if r.created_at else ""),
+                )
+                for r in rows
+            ]
+    except Exception:
+        pass
+
     if kremlin_id not in _KREMLINS_BY_ID:
         raise HTTPException(status_code=404, detail="Кремль не найден")
     return COMMENTS_DATA.get(kremlin_id, [])
@@ -342,27 +421,79 @@ async def create_comment(
     text: str = Form(..., description="Текст комментария"),
     images: list[UploadFile] = File(default=[], description="Фотографии (опционально)"),
     authorization: Optional[str] = Header(default=None),
+    db: Session = Depends(get_db),
 ) -> Comment:
     """Создаёт комментарий. Требует Bearer-токен."""
     global _next_comment_id
 
-    _require_auth(authorization)
+    user = _require_auth(authorization)
 
-    if kremlin_id not in _KREMLINS_BY_ID:
+    if kremlin_id not in _KREMLINS_BY_ID and db is None:
         raise HTTPException(status_code=404, detail="Кремль не найден")
 
+    upload_dir = os.path.join("static", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    urls: list[str] = []
+    for up in images:
+        if not up.filename:
+            continue
+        ext = os.path.splitext(up.filename)[1]
+        filename = f"{int(datetime.now().timestamp())}_{uuid.uuid4().hex}{ext}"
+        dest_path = os.path.join(upload_dir, filename)
+        with open(dest_path, "wb") as f:
+            shutil.copyfileobj(up.file, f)
+        urls.append(f"/static/uploads/{filename}")
+
+    created_at = datetime.now(timezone.utc)
+
+    try:
+        from ..models import Comment as DBComment, Kremlin as DBKremlin
+
+        db_comment = DBComment(
+            kremlin_id=kremlin_id,
+            author_id=user.get("user_id") or 0,
+            author_name=user.get("username") or "Пользователь",
+            author_avatar_url=None,
+            text=text,
+            image_urls=urls,
+            created_at=created_at,
+        )
+        db.add(db_comment)
+        kremlin_row = db.query(DBKremlin).filter(DBKremlin.id == kremlin_id).first()
+        if kremlin_row:
+            kremlin_row.comments_count = (kremlin_row.comments_count or 0) + 1
+        db.commit()
+        db.refresh(db_comment)
+
+        return Comment(
+            id=db_comment.id,
+            kremlinId=db_comment.kremlin_id,
+            authorId=db_comment.author_id,
+            authorName=db_comment.author_name,
+            authorAvatarUrl=db_comment.author_avatar_url,
+            text=db_comment.text,
+            imageUrls=db_comment.image_urls or [],
+            createdAt=db_comment.created_at.isoformat(),
+        )
+    except Exception:
+        # если что-то пошло не так с БД — падаем обратно к in-memory
+        pass
+
+    # Fallback: store in memory
     comment_id = _next_comment_id
     _next_comment_id += 1
 
+    author_id = user.get("user_id") if isinstance(user, dict) else None
+    author_name = user.get("username") if isinstance(user, dict) else "Пользователь"
     new_comment = Comment(
         id=comment_id,
         kremlinId=kremlin_id,
-        authorId=42,
-        authorName="Тестовый пользователь",
+        authorId=author_id or 0,
+        authorName=author_name,
         authorAvatarUrl=None,
         text=text,
-        imageUrls=[],  # в реальной реализации — URL загруженных файлов
-        createdAt=datetime.now(timezone.utc).isoformat(),
+        imageUrls=urls,  # локальные URL /static/uploads/...
+        createdAt=created_at.isoformat(),
     )
     COMMENTS_DATA.setdefault(kremlin_id, []).append(new_comment)
     return new_comment
