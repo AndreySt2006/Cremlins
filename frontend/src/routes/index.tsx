@@ -30,7 +30,13 @@ function buildPopupHTML(kremlin: KremlinListItem): string {
     .filter(Boolean)
     .join(' · ')
 
-  return `<div style="font-family:Inter,sans-serif;padding:2px">
+  // If preview image exists (provided by list endpoint), show a small thumbnail in popup.
+  const imgHtml = kremlin.previewImageUrl
+    ? `<div style="width:100%;height:120px;overflow:hidden;border-radius:8px;margin-bottom:8px"><img src=\"${kremlin.previewImageUrl}\" alt=\"${kremlin.name}\" style=\"width:100%;height:100%;object-fit:cover;display:block;\"/></div>`
+    : ''
+
+  return `<div style="font-family:Inter,sans-serif;padding:6px">
+    ${imgHtml}
     <p style="font-size:17px;font-weight:700;margin:0 0 4px;line-height:1.3">${kremlin.name}</p>
     ${cityYear ? `<p style="font-size:12px;color:#6b7280;margin:0 0 12px">${cityYear}</p>` : '<div style="margin-bottom:12px"></div>'}
     <button
