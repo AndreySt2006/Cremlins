@@ -365,7 +365,6 @@ def get_kremlin(kremlin_id: int) -> KremlinDetail:
 )
 def list_comments(kremlin_id: int) -> list[Comment]:
     """Возвращает комментарии к кремлю или 404 если кремль не найден.
-
     Пытаемся прочитать комментарии из БД, в противном случае — из памяти.
     """
     # Попробуем получить из БД
