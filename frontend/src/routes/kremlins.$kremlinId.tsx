@@ -1,3 +1,4 @@
+import { getImageUrl } from '@/lib/utils'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ExternalLink, ArrowLeft, Paperclip, X, Send } from 'lucide-react'
 import { useState, useRef } from 'react'
@@ -78,7 +79,7 @@ function KremlinPage() {
           {data.images.map((url, i) => (
             <img
               key={i}
-              src={url}
+              src={getImageUrl(url)}
               alt={`${data.name} — фото ${i + 1}`}
               className="h-56 w-auto shrink-0 rounded-xl object-cover"
             />
@@ -210,13 +211,13 @@ function CommentItem({ comment }: { comment: Comment }) {
             {comment.imageUrls.map((url, i) => (
               <img
                 key={i}
-                src={url}
+                src={getImageUrl(url)}
                 alt={`Фото ${i + 1}`}
                 className="h-28 w-auto shrink-0 rounded-lg object-cover"
               />
             ))}
           </div>
-        )}
+        )}}
       </div>
     </li>
   )
