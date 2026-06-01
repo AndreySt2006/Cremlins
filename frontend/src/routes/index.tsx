@@ -1,3 +1,4 @@
+import { getImageUrl } from '@/lib/utils'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import maplibregl from 'maplibre-gl'
@@ -30,9 +31,11 @@ function buildPopupHTML(kremlin: KremlinListItem): string {
     .filter(Boolean)
     .join(' · ')
 
-  // If preview image exists (provided by list endpoint), show a small thumbnail in popup.
+  // Преобразуем относительный путь картинки в абсолютный
+  const imgUrl = getImageUrl(kremlin.previewImageUrl)
+
   const imgHtml = kremlin.previewImageUrl
-    ? `<div style="width:100%;height:120px;overflow:hidden;border-radius:8px;margin-bottom:8px"><img src=\"${kremlin.previewImageUrl}\" alt=\"${kremlin.name}\" style=\"width:100%;height:100%;object-fit:cover;display:block;\"/></div>`
+    ? `<div style="width:100%;height:120px;overflow:hidden;border-radius:8px;margin-bottom:8px"><img src=\"${imgUrl}\" alt=\"${kremlin.name}\" style=\"width:100%;height:100%;object-fit:cover;display:block;\"/></div>`
     : ''
 
   return `<div style="font-family:Inter,sans-serif;padding:6px">

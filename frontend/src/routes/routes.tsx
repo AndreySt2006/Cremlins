@@ -1,3 +1,4 @@
+import { getImageUrl } from '@/lib/utils'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { X, Map } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -108,7 +109,7 @@ function KremlinCard({
       >
         {kremlin.previewImageUrl ? (
           <img
-            src={kremlin.previewImageUrl}
+            src={getImageUrl(kremlin.previewImageUrl)}
             alt={kremlin.name}
             className="h-20 w-20 object-cover"
           />
