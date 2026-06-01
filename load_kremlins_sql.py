@@ -50,7 +50,6 @@ def sync_data():
     }
 
     try:
-        # SPARQL query may take time; increase timeout to be safe
         r = requests.get(url, params={"query": FAST_QUERY}, headers=headers, timeout=120)
         r.raise_for_status()
         raw_items = r.json()["results"]["bindings"]
@@ -109,7 +108,6 @@ def sync_data():
                             if desc:
                                 description = desc
                 except Exception:
-                    # ignore fetch errors — we'll keep None or the placeholder
                     pass
 
             # Wikidata id string (e.g. Q5110)
