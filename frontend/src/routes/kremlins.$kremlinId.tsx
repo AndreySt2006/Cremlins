@@ -217,7 +217,7 @@ function CommentItem({ comment }: { comment: Comment }) {
               />
             ))}
           </div>
-        )}}
+        )}
       </div>
     </li>
   )
