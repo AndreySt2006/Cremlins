@@ -8,6 +8,7 @@ export default defineConfig({
     TanStackRouterVite({ routesDirectory: './src/routes', generatedRouteTree: './src/routeTree.gen.ts' }),
     react(),
   ],
+
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

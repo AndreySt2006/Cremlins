@@ -27,7 +27,7 @@ try:
 except Exception:
     target_metadata = None
 
-# Prefer DATABASE_URL from app.database if available
+# Prefer DATABASE_URL from api.database if available
 try:
     from app.database import DATABASE_URL as APP_DATABASE_URL
 

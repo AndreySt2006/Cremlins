@@ -2,7 +2,7 @@
 Простой "миграционный" скрипт — добавляет недостающие колонки в таблицу `fortresses`.
 """
 from sqlalchemy import text
-from app.database import engine
+from api.database import engine
 
 queries = [
     "ALTER TABLE fortresses ADD COLUMN IF NOT EXISTS city TEXT;",

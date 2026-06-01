@@ -2,8 +2,8 @@ import requests
 import re
 from sqlalchemy import text
 
-from app.database import Base, engine
-import app.models  # важно для регистрации моделей
+from backend.api.database import Base, engine
+import backend.api.models  # важно для регистрации моделей
 
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)

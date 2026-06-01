@@ -4,7 +4,7 @@
 """
 import json
 from pathlib import Path
-from app.database import engine
+from api.database import engine
 from sqlalchemy import text
 
 base = Path(__file__).resolve().parents[1]

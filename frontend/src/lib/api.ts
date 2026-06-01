@@ -1,6 +1,7 @@
 import ky from 'ky'
 import { useAuthStore } from '../store/authStore'
 
+// @ts-ignore
 const apiUrl = `${import.meta.env.VITE_API_URL as string}/api`
 
 export const api = ky.create({

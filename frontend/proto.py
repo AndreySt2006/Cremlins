@@ -8,7 +8,7 @@ MVP goals (from frontend/roadmap_streamlit.md):
 - Simple "Routes" feature: user creates a checklist/list of Kremlins (no navigation yet)
 
 Notes:
-- No backend yet. Data source is `frontend/query_kremlins.json` (Wikidata export). Fallback to a small seed list.
+- No back yet. Data source is `frontend/query_kremlins.json` (Wikidata export). Fallback to a small seed list.
 - Uses OpenStreetMap tiles (works in Russia without VPN).
 
 Run:
@@ -445,7 +445,7 @@ if kremlin_id_param:
                 st.rerun()
 
     st.caption(
-        "Account features (favorites/visited/comments/uploads) will be added after backend is connected."
+        "Account features (favorites/visited/comments/uploads) will be added after back is connected."
     )
     st.markdown("[Back to top](#russian-kremlins-interactive-guide)")
 
